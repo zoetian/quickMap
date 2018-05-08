@@ -1,0 +1,29 @@
+body {
+	background: linear-gradient(100deg, #adbce6 10%, #e6adbc 100%);
+}
+
+h1 {
+	font-weight: 800;
+	font-size: 55px;
+	color: #fff;
+	width: 100%;
+}
+
+.search {
+	border: 38px solid black;
+	border-image: linear-gradient(to right, #8fc0e7 0, #ef9689 100%) 1;
+	position: absolute;
+	top: 30%;
+	left: 50%;
+	width: 900px;
+	margin-left: -450px;
+
+	text-align: center;
+	overflow-x: hidden;
+}
+
+input[placeholder] {
+	font-family: "Gotham Rounded";
+	font-size: 20px;
+	margin-bottom: 50px;
+}
