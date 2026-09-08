@@ -3,50 +3,61 @@ import { useMap, useMapsLibrary } from "@vis.gl/react-google-maps";
 import type { Stop } from "../lib/types";
 
 interface Props {
-  orderedStops: Stop[]; // starts and ends with the central point
+  orderedStops: Stop[]; // starts at the central point; does not return to it
 }
 
-/** Renders a driving-directions polyline through the stops in the exact
- *  order given (our TSP solver already decided the order, so we ask the
- *  Directions API to just draw it, not re-optimize it). */
+/** Draws a driving-route polyline through the stops in the exact order
+ *  given (our TSP solver already decided the order; we just draw it).
+ *  The Routes API has no drop-in renderer like the old DirectionsRenderer,
+ *  so this fetches the route and draws the polyline(s) itself. */
 export function RouteDirections({ orderedStops }: Props) {
   const map = useMap();
   const routesLibrary = useMapsLibrary("routes");
-  const rendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
+  const polylinesRef = useRef<google.maps.Polyline[]>([]);
+
+  function clearPolylines() {
+    polylinesRef.current.forEach((polyline) => polyline.setMap(null));
+    polylinesRef.current = [];
+  }
+
+  useEffect(() => clearPolylines, []);
 
   useEffect(() => {
     if (!map || !routesLibrary) return;
-    const renderer = new routesLibrary.DirectionsRenderer({
-      map,
-      suppressMarkers: true,
-    });
-    rendererRef.current = renderer;
-    return () => renderer.setMap(null);
-  }, [map, routesLibrary]);
-
-  useEffect(() => {
-    if (!routesLibrary || !rendererRef.current) return;
     if (orderedStops.length < 2) return;
 
-    const directionsService = new routesLibrary.DirectionsService();
+    clearPolylines();
+
     const [origin, ...rest] = orderedStops;
     const destination = rest[rest.length - 1];
-    const waypoints = rest.slice(0, -1).map((stop) => ({
+    const intermediates = rest.slice(0, -1).map((stop) => ({
       location: { lat: stop.lat, lng: stop.lng },
-      stopover: true,
     }));
 
-    directionsService
-      .route({
-        origin: { lat: origin.lat, lng: origin.lng },
-        destination: { lat: destination.lat, lng: destination.lng },
-        waypoints,
-        optimizeWaypoints: false,
-        travelMode: google.maps.TravelMode.DRIVING,
+    let cancelled = false;
+
+    routesLibrary.Route.computeRoutes({
+      origin: { lat: origin.lat, lng: origin.lng },
+      destination: { lat: destination.lat, lng: destination.lng },
+      intermediates,
+      optimizeWaypointOrder: false,
+      travelMode: "DRIVING",
+      fields: ["path"],
+    })
+      .then(({ routes }) => {
+        if (cancelled || !routes || routes.length === 0) return;
+        const polylines = routes[0].createPolylines({
+          polylineOptions: { strokeColor: "#5b7fdb", strokeWeight: 4 },
+        });
+        polylines.forEach((polyline) => polyline.setMap(map));
+        polylinesRef.current = polylines;
       })
-      .then((result) => rendererRef.current?.setDirections(result))
-      .catch((err) => console.error("Directions request failed:", err));
-  }, [routesLibrary, orderedStops]);
+      .catch((err) => console.error("computeRoutes failed:", err));
+
+    return () => {
+      cancelled = true;
+    };
+  }, [map, routesLibrary, orderedStops]);
 
   return null;
 }

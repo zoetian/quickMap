@@ -9,7 +9,7 @@ ending at a central point.
 ```
 frontend/   React + TypeScript + Vite SPA, deployed as a static site to
             GitHub Pages. Talks directly to the Google Maps JavaScript API
-            (Geocoding, Routes/Route Matrix, Directions) from the browser, and
+            (Geocoding, Routes API) from the browser, and
             to worker/ for crawling.
 
 worker/     A small Cloudflare Worker (TypeScript) that does the one thing
@@ -20,10 +20,14 @@ worker/     A small Cloudflare Worker (TypeScript) that does the one thing
 
 Route optimization (TSP) runs entirely client-side in `frontend/src/lib/tsp.ts`:
 exact Held-Karp for ≤13 stops, nearest-neighbor + 2-opt heuristic beyond
-that. It uses real driving distances from the Routes API's
-`computeRouteMatrix` (`frontend/src/lib/distanceMatrix.ts`), not
-straight-line distance — the older `google.maps.DistanceMatrixService` is
-on Google's deprecation track, so this project uses its replacement.
+that. It solves an **open path** — starting at the central point and
+visiting every stop once, with no forced leg back to the start. It uses
+real driving distances from the Routes API's `computeRouteMatrix`
+(`frontend/src/lib/distanceMatrix.ts`), and draws the route with the same
+API's `computeRoutes` (`frontend/src/components/RouteDirections.tsx`) —
+the older `google.maps.DistanceMatrixService`/`DirectionsService`/`Marker`
+are all on Google's deprecation track, so this project uses their
+Routes API / `AdvancedMarkerElement` replacements throughout.
 
 Everything that can run in the browser does, so the only server piece is
 the crawler — which keeps hosting to "one free Cloudflare Worker" instead
@@ -36,16 +40,16 @@ of a full backend.
 1. Go to the [Google Cloud Console](https://console.cloud.google.com/),
    create a project (or pick an existing one).
 2. **APIs & Services → Library**: enable **Maps JavaScript API**,
-   **Geocoding API**, **Directions API**, and **Routes API**. Each of these
-   is a separate billable product in Cloud Console even though the
-   frontend only ever talks to the single Maps JavaScript API library —
-   skipping one gives a `REQUEST_DENIED` error from that specific service
-   at runtime, with everything else still working.
+   **Geocoding API**, and **Routes API**. Each of these is a separate
+   billable product in Cloud Console even though the frontend only ever
+   talks to the single Maps JavaScript API library — skipping one gives a
+   `REQUEST_DENIED` error from that specific service at runtime, with
+   everything else still working.
 3. **APIs & Services → Credentials → Create Credentials → API key**.
 4. Restrict the key (Edit API key):
    - *Application restrictions* → HTTP referrers → add
      `https://<your-username>.github.io/*` and `http://localhost:5173/*`.
-   - *API restrictions* → restrict to the four APIs enabled above.
+   - *API restrictions* → restrict to the three APIs enabled above.
 5. Google requires a billing account to be attached even for free-tier
    usage; a hobby project's traffic should stay comfortably within the
    monthly free usage included with every account.
