@@ -1,0 +1,10 @@
+name = "quickmap-worker"
+main = "src/index.ts"
+compatibility_date = "2025-09-01"
+
+# Comma-separated list of allowed origins for CORS, e.g. your GitHub Pages URL
+# and http://localhost:5173 for local dev. Set for real via:
+#   wrangler secret put ALLOWED_ORIGINS
+# or fill in [vars] below for a non-secret default.
+[vars]
+ALLOWED_ORIGINS = "http://localhost:5173"
