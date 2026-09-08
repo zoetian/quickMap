@@ -1,8 +1,9 @@
-import { Map, Marker, type MapMouseEvent } from "@vis.gl/react-google-maps";
+import { AdvancedMarker, Map, Pin, type MapMouseEvent } from "@vis.gl/react-google-maps";
 import type { Stop, RouteResult } from "../lib/types";
 import { RouteDirections } from "./RouteDirections";
 
 interface Props {
+  mapId: string;
   centralPoint: Stop | null;
   stops: Stop[];
   route: RouteResult | null;
@@ -11,7 +12,7 @@ interface Props {
 
 const DEFAULT_CENTER = { lat: 39.8283, lng: -98.5795 }; // roughly center of the US
 
-export function MapView({ centralPoint, stops, route, onMapClick }: Props) {
+export function MapView({ mapId, centralPoint, stops, route, onMapClick }: Props) {
   function handleClick(e: MapMouseEvent) {
     if (e.detail.latLng) {
       onMapClick(e.detail.latLng.lat, e.detail.latLng.lng);
@@ -21,29 +22,39 @@ export function MapView({ centralPoint, stops, route, onMapClick }: Props) {
   return (
     <Map
       className="map-view"
+      mapId={mapId}
       defaultCenter={centralPoint ?? DEFAULT_CENTER}
       defaultZoom={centralPoint ? 12 : 4}
       onClick={handleClick}
       disableDefaultUI={false}
     >
       {centralPoint && (
-        <Marker
-          position={centralPoint}
-          title={centralPoint.label}
-          label={{ text: "C", color: "white" }}
-        />
+        <AdvancedMarker position={centralPoint} title={centralPoint.label}>
+          <Pin
+            background="#1a1a2e"
+            borderColor="#0c0d12"
+            glyphColor="#fff"
+            glyphText={centralPoint.letter}
+          />
+        </AdvancedMarker>
       )}
       {stops.map((stop) => {
         const orderIndex = route
           ? route.orderedStops.findIndex((s) => s.id === stop.id)
           : -1;
         return (
-          <Marker
+          <AdvancedMarker
             key={stop.id}
             position={stop}
             title={orderIndex >= 0 ? `#${orderIndex} — ${stop.label}` : stop.label}
-            label={{ text: stop.letter, color: "white" }}
-          />
+          >
+            <Pin
+              background="#5b7fdb"
+              borderColor="#3f5bb0"
+              glyphColor="#fff"
+              glyphText={stop.letter}
+            />
+          </AdvancedMarker>
         );
       })}
       {route && <RouteDirections orderedStops={route.orderedStops} />}

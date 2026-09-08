@@ -18,6 +18,15 @@ const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as
   | string
   | undefined;
 
+// AdvancedMarkerElement (replacing the deprecated google.maps.Marker)
+// requires a Map ID. "DEMO_MAP_ID" is Google's public placeholder for
+// local development — set VITE_GOOGLE_MAPS_MAP_ID to a real Map ID
+// (Cloud Console → Google Maps Platform → Map Management) before
+// deploying to production.
+const GOOGLE_MAPS_MAP_ID =
+  (import.meta.env.VITE_GOOGLE_MAPS_MAP_ID as string | undefined) ??
+  "DEMO_MAP_ID";
+
 function newId(): string {
   return crypto.randomUUID();
 }
@@ -29,11 +38,6 @@ function QuickMapApp() {
   const geocoder = useMemo(
     () => (geocodingLibrary ? new geocodingLibrary.Geocoder() : null),
     [geocodingLibrary]
-  );
-  const distanceMatrixService = useMemo(
-    () =>
-      routesLibrary ? new routesLibrary.DistanceMatrixService() : null,
-    [routesLibrary]
   );
 
   const [centralPoint, setCentralPoint] = useState<Stop | null>(null);
@@ -234,7 +238,7 @@ function QuickMapApp() {
       setError("Add at least one stop first.");
       return;
     }
-    if (!distanceMatrixService) {
+    if (!routesLibrary) {
       setError("Map isn't ready yet — try again in a moment.");
       return;
     }
@@ -244,7 +248,7 @@ function QuickMapApp() {
     try {
       const allStops = [centralPoint, ...stops];
       const { distanceMeters, durationSeconds } = await buildDistanceMatrix(
-        distanceMatrixService,
+        routesLibrary.RouteMatrix,
         allStops
       );
       const { order, totalDistance } = solveTsp(distanceMeters);
@@ -315,6 +319,7 @@ function QuickMapApp() {
 
         <main className="app__map">
           <MapView
+            mapId={GOOGLE_MAPS_MAP_ID}
             centralPoint={centralPoint}
             stops={stops}
             route={route}

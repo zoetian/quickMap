@@ -1,5 +1,7 @@
-// Solves the "visit every stop starting and ending at index 0" problem
-// (a closed-loop TSP with a fixed start/end = the central location).
+// Solves the "start at index 0, visit every other stop exactly once"
+// problem — an open path, not a closed loop. The central point is the
+// fixed start; the route ends at whichever stop makes the total trip
+// shortest, with no leg back to the start.
 //
 // - n <= EXACT_LIMIT: exact Held-Karp dynamic program.
 // - larger n: nearest-neighbor construction + 2-opt local search.
@@ -7,7 +9,7 @@
 // stops); not meant to scale to hundreds of nodes.
 
 export interface TspResult {
-  order: number[]; // indices into the distance matrix, starting and ending at 0
+  order: number[]; // indices into the distance matrix, starting at 0; does not return to 0
   totalDistance: number;
 }
 
@@ -55,18 +57,16 @@ function heldKarp(dist: number[][]): TspResult {
   }
 
   const fullMask = numSubsets - 1;
-  let bestEnd = -1;
-  let bestCost = Infinity;
-  for (let i = 1; i < n; i++) {
-    const cost = dp[fullMask][i] + dist[i][0];
-    if (cost < bestCost) {
-      bestCost = cost;
-      bestEnd = i;
+  let bestEnd = 0;
+  let bestCost = 0;
+  if (n > 1) {
+    bestCost = Infinity;
+    for (let i = 1; i < n; i++) {
+      if (dp[fullMask][i] < bestCost) {
+        bestCost = dp[fullMask][i];
+        bestEnd = i;
+      }
     }
-  }
-
-  if (n === 1) {
-    return { order: [0, 0], totalDistance: 0 };
   }
 
   const order: number[] = [];
@@ -79,7 +79,6 @@ function heldKarp(dist: number[][]): TspResult {
     cur = prev;
   }
   order.reverse();
-  order.push(0);
 
   return { order, totalDistance: bestCost };
 }
@@ -105,25 +104,26 @@ function nearestNeighborTour(dist: number[][]): number[] {
     order.push(best);
   }
 
-  order.push(0);
   return order;
 }
 
 function twoOpt(initialOrder: number[], dist: number[][]): number[] {
   let order = initialOrder.slice();
+  const n = order.length;
   let improved = true;
 
   while (improved) {
     improved = false;
-    for (let i = 1; i < order.length - 2; i++) {
-      for (let j = i + 1; j < order.length - 1; j++) {
+    for (let i = 1; i < n - 1; i++) {
+      for (let j = i + 1; j < n; j++) {
         const a = order[i - 1];
         const b = order[i];
         const c = order[j];
-        const d = order[j + 1];
+        const hasTail = j + 1 < n;
+        const d = hasTail ? order[j + 1] : -1;
 
-        const before = dist[a][b] + dist[c][d];
-        const after = dist[a][c] + dist[b][d];
+        const before = dist[a][b] + (hasTail ? dist[c][d] : 0);
+        const after = dist[a][c] + (hasTail ? dist[b][d] : 0);
 
         if (after < before - 1e-9) {
           const reversed = order.slice(i, j + 1).reverse();
@@ -140,7 +140,7 @@ function twoOpt(initialOrder: number[], dist: number[][]): number[] {
 export function solveTsp(dist: number[][]): TspResult {
   const n = dist.length;
   if (n === 0) return { order: [], totalDistance: 0 };
-  if (n === 1) return { order: [0, 0], totalDistance: 0 };
+  if (n === 1) return { order: [0], totalDistance: 0 };
 
   if (n <= EXACT_LIMIT) {
     return heldKarp(dist);

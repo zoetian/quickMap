@@ -9,7 +9,7 @@ ending at a central point.
 ```
 frontend/   React + TypeScript + Vite SPA, deployed as a static site to
             GitHub Pages. Talks directly to the Google Maps JavaScript API
-            (Geocoding, Distance Matrix, Directions) from the browser, and
+            (Geocoding, Routes/Route Matrix, Directions) from the browser, and
             to worker/ for crawling.
 
 worker/     A small Cloudflare Worker (TypeScript) that does the one thing
@@ -20,8 +20,10 @@ worker/     A small Cloudflare Worker (TypeScript) that does the one thing
 
 Route optimization (TSP) runs entirely client-side in `frontend/src/lib/tsp.ts`:
 exact Held-Karp for ≤13 stops, nearest-neighbor + 2-opt heuristic beyond
-that. It uses real driving distances from the Distance Matrix API, not
-straight-line distance.
+that. It uses real driving distances from the Routes API's
+`computeRouteMatrix` (`frontend/src/lib/distanceMatrix.ts`), not
+straight-line distance — the older `google.maps.DistanceMatrixService` is
+on Google's deprecation track, so this project uses its replacement.
 
 Everything that can run in the browser does, so the only server piece is
 the crawler — which keeps hosting to "one free Cloudflare Worker" instead
@@ -34,9 +36,9 @@ of a full backend.
 1. Go to the [Google Cloud Console](https://console.cloud.google.com/),
    create a project (or pick an existing one).
 2. **APIs & Services → Library**: enable **Maps JavaScript API**,
-   **Geocoding API**, **Distance Matrix API**, and **Directions API**. Each
-   of these is a separate billable product in Cloud Console even though
-   the frontend only ever talks to the single Maps JavaScript API library —
+   **Geocoding API**, **Directions API**, and **Routes API**. Each of these
+   is a separate billable product in Cloud Console even though the
+   frontend only ever talks to the single Maps JavaScript API library —
    skipping one gives a `REQUEST_DENIED` error from that specific service
    at runtime, with everything else still working.
 3. **APIs & Services → Credentials → Create Credentials → API key**.
@@ -47,6 +49,11 @@ of a full backend.
 5. Google requires a billing account to be attached even for free-tier
    usage; a hobby project's traffic should stay comfortably within the
    monthly free usage included with every account.
+6. **Google Maps Platform → Map Management → Create Map ID** (any map
+   type). Markers use `AdvancedMarkerElement`, which requires a Map ID to
+   render — locally this falls back to Google's `DEMO_MAP_ID` placeholder
+   automatically, but production needs a real one set as
+   `VITE_GOOGLE_MAPS_MAP_ID`.
 
 ### 2. Local development
 
@@ -62,6 +69,7 @@ npm install
 cp .env.example .env.local
 # edit .env.local:
 #   VITE_GOOGLE_MAPS_API_KEY=<your key>
+#   VITE_GOOGLE_MAPS_MAP_ID=<your Map ID>   (optional locally; defaults to DEMO_MAP_ID)
 #   VITE_WORKER_URL=http://localhost:8787
 npm run dev             # http://localhost:5173
 ```
@@ -85,6 +93,7 @@ Pages origin (`https://<your-username>.github.io`) and redeploy.
 1. Repo **Settings → Pages → Source** → set to "GitHub Actions" (one-time).
 2. Repo **Settings → Secrets and variables → Actions**, add:
    - `VITE_GOOGLE_MAPS_API_KEY`
+   - `VITE_GOOGLE_MAPS_MAP_ID` (a real Map ID — `DEMO_MAP_ID` is dev-only)
    - `VITE_WORKER_URL` (your deployed worker URL from above)
 3. Push to `master` — [.github/workflows/deploy-frontend.yml](.github/workflows/deploy-frontend.yml)
    builds and publishes automatically.
@@ -102,7 +111,7 @@ These map to the open questions in the original project brainstorm:
   pattern matching, so it will miss some real addresses and flag some false
   positives. That's why the UI makes you confirm each candidate with a
   checkbox rather than trusting it blindly.
-- **Distance Matrix caps out at 25 stops per request** (a Google API limit),
+- **The route matrix caps out at 25 stops per request** (a Google API limit),
   so the "100+ locations" case from the original notes isn't handled yet —
   it would need the matrix built from tiled/batched requests.
 - **Only one central point** is supported right now; the "two central
