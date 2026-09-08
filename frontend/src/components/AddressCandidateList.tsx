@@ -39,6 +39,7 @@ export function AddressCandidateList({
                 checked={c.selected}
                 onChange={() => onToggle(c.id)}
               />
+              <span className="candidate-list__letter">{c.letter}</span>
               {c.text}
             </label>
           </li>

@@ -33,13 +33,17 @@ of a full backend.
 
 1. Go to the [Google Cloud Console](https://console.cloud.google.com/),
    create a project (or pick an existing one).
-2. **APIs & Services → Library**: enable **Maps JavaScript API** and
-   **Geocoding API**.
+2. **APIs & Services → Library**: enable **Maps JavaScript API**,
+   **Geocoding API**, **Distance Matrix API**, and **Directions API**. Each
+   of these is a separate billable product in Cloud Console even though
+   the frontend only ever talks to the single Maps JavaScript API library —
+   skipping one gives a `REQUEST_DENIED` error from that specific service
+   at runtime, with everything else still working.
 3. **APIs & Services → Credentials → Create Credentials → API key**.
 4. Restrict the key (Edit API key):
    - *Application restrictions* → HTTP referrers → add
      `https://<your-username>.github.io/*` and `http://localhost:5173/*`.
-   - *API restrictions* → restrict to the two APIs enabled above.
+   - *API restrictions* → restrict to the four APIs enabled above.
 5. Google requires a billing account to be attached even for free-tier
    usage; a hobby project's traffic should stay comfortably within the
    monthly free usage included with every account.

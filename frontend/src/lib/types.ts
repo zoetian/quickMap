@@ -3,12 +3,14 @@ export interface Stop {
   label: string;
   lat: number;
   lng: number;
+  letter: string; // stable identifier shown on the map + route summary, e.g. "A", "C" for the central point
 }
 
 export interface AddressCandidate {
   id: string;
   text: string;
   selected: boolean;
+  letter: string;
 }
 
 export interface RouteResult {

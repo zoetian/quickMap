@@ -33,7 +33,7 @@ export function MapView({ centralPoint, stops, route, onMapClick }: Props) {
           label={{ text: "C", color: "white" }}
         />
       )}
-      {stops.map((stop, i) => {
+      {stops.map((stop) => {
         const orderIndex = route
           ? route.orderedStops.findIndex((s) => s.id === stop.id)
           : -1;
@@ -41,8 +41,8 @@ export function MapView({ centralPoint, stops, route, onMapClick }: Props) {
           <Marker
             key={stop.id}
             position={stop}
-            title={stop.label}
-            label={orderIndex > 0 ? String(orderIndex) : String(i + 1)}
+            title={orderIndex >= 0 ? `#${orderIndex} — ${stop.label}` : stop.label}
+            label={{ text: stop.letter, color: "white" }}
           />
         );
       })}

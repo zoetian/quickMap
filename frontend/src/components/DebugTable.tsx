@@ -29,7 +29,7 @@ export function DebugTable({ route }: Props) {
         <tbody>
           {route.orderedStops.map((stop, i) => (
             <tr key={`${stop.id}-${i}`}>
-              <td>{i}</td>
+              <td>{`${i}-${stop.letter}`}</td>
               <td>{stop.label}</td>
               <td>{i > 0 ? formatKm(route.legDistances[i - 1]) : "—"}</td>
             </tr>

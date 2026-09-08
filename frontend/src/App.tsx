@@ -1,14 +1,16 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { APIProvider, useMapsLibrary } from "@vis.gl/react-google-maps";
 import { UrlCrawlForm } from "./components/UrlCrawlForm";
 import { AddressCandidateList } from "./components/AddressCandidateList";
 import { CentralPointInput } from "./components/CentralPointInput";
 import { MapView } from "./components/MapView";
 import { DebugTable } from "./components/DebugTable";
+import { RouteOrderSummary } from "./components/RouteOrderSummary";
 import { crawlUrlForAddresses } from "./lib/crawlApi";
 import { geocodeAddress, reverseGeocode } from "./lib/geocoding";
 import { buildDistanceMatrix } from "./lib/distanceMatrix";
 import { solveTsp } from "./lib/tsp";
+import { CENTRAL_POINT_LETTER, stopLetterForIndex } from "./lib/labels";
 import type { AddressCandidate, RouteResult, Stop } from "./lib/types";
 import "./App.css";
 
@@ -43,6 +45,13 @@ function QuickMapApp() {
   const [crawling, setCrawling] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  const nextLetterIndexRef = useRef(0);
+  function assignNextLetter(): string {
+    const letter = stopLetterForIndex(nextLetterIndexRef.current);
+    nextLetterIndexRef.current += 1;
+    return letter;
+  }
+
   async function handleCrawl(url: string) {
     setError(null);
     setCrawling(true);
@@ -53,7 +62,12 @@ function QuickMapApp() {
       }
       setCandidates((prev) => [
         ...prev,
-        ...addresses.map((text) => ({ id: newId(), text, selected: false })),
+        ...addresses.map((text) => ({
+          id: newId(),
+          text,
+          selected: false,
+          letter: assignNextLetter(),
+        })),
       ]);
     } catch (err) {
       setError((err as Error).message);
@@ -92,7 +106,7 @@ function QuickMapApp() {
       );
       setStops((prev) => [
         ...prev,
-        { id, label: formattedAddress, lat, lng },
+        { id, label: formattedAddress, lat, lng, letter: candidate.letter },
       ]);
       setRoute(null);
     } catch (err) {
@@ -115,11 +129,15 @@ function QuickMapApp() {
         text
       );
       const id = newId();
+      const letter = assignNextLetter();
       setCandidates((prev) => [
         ...prev,
-        { id, text: formattedAddress, selected: true },
+        { id, text: formattedAddress, selected: true, letter },
       ]);
-      setStops((prev) => [...prev, { id, label: formattedAddress, lat, lng }]);
+      setStops((prev) => [
+        ...prev,
+        { id, label: formattedAddress, lat, lng, letter },
+      ]);
       setRoute(null);
     } catch (err) {
       setError((err as Error).message);
@@ -135,8 +153,12 @@ function QuickMapApp() {
     try {
       const label = await reverseGeocode(geocoder, lat, lng);
       const id = newId();
-      setCandidates((prev) => [...prev, { id, text: label, selected: true }]);
-      setStops((prev) => [...prev, { id, label, lat, lng }]);
+      const letter = assignNextLetter();
+      setCandidates((prev) => [
+        ...prev,
+        { id, text: label, selected: true, letter },
+      ]);
+      setStops((prev) => [...prev, { id, label, lat, lng, letter }]);
       setRoute(null);
     } catch (err) {
       setError((err as Error).message);
@@ -154,7 +176,13 @@ function QuickMapApp() {
         geocoder,
         address
       );
-      setCentralPoint({ id: "central", label: formattedAddress, lat, lng });
+      setCentralPoint({
+        id: "central",
+        label: formattedAddress,
+        lat,
+        lng,
+        letter: CENTRAL_POINT_LETTER,
+      });
       setRoute(null);
     } catch (err) {
       setError((err as Error).message);
@@ -176,7 +204,13 @@ function QuickMapApp() {
         const { latitude: lat, longitude: lng } = position.coords;
         try {
           const label = await reverseGeocode(geocoder, lat, lng);
-          setCentralPoint({ id: "central", label, lat, lng });
+          setCentralPoint({
+            id: "central",
+            label,
+            lat,
+            lng,
+            letter: CENTRAL_POINT_LETTER,
+          });
           setRoute(null);
         } catch (err) {
           setError((err as Error).message);
@@ -265,6 +299,7 @@ function QuickMapApp() {
             {busy ? "Working…" : "Optimize route"}
           </button>
           {error && <p className="app__error">{error}</p>}
+          {route && <RouteOrderSummary route={route} />}
           {route && (
             <label className="app__debug-toggle">
               <input
