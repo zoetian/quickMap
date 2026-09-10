@@ -7,4 +7,4 @@ compatibility_date = "2025-09-01"
 #   wrangler secret put ALLOWED_ORIGINS
 # or fill in [vars] below for a non-secret default.
 [vars]
-ALLOWED_ORIGINS = "http://localhost:5173"
+ALLOWED_ORIGINS = "https://zoetian.github.io"
