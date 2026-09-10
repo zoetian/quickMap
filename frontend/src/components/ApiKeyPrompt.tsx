@@ -23,7 +23,7 @@ export function ApiKeyPrompt({ onSubmit, reason = "none" }: Props) {
           <p className="hero-card__subtitle">
             {reason === "quota"
               ? "You've used up today's free demo searches — add your own free key to keep going."
-              : "Find the shortest route to visit a list of addresses."}
+              : "The optimal route from your central point to every stop"}
           </p>
           <form className="api-key-prompt" onSubmit={handleSubmit}>
             <label htmlFor="api-key-input">Your Google Maps API key</label>

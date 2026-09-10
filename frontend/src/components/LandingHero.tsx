@@ -54,8 +54,7 @@ export function LandingHero({
         <div className="hero-card">
           <h1 className="hero-card__title">QuickMap</h1>
           <p className="hero-card__subtitle">
-            Scan a page for addresses, then get the shortest route to visit
-            them all.
+            The optimal route from your central point to every stop
           </p>
 
           <CentralPointInput
