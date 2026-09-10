@@ -4,16 +4,22 @@ import type { Stop } from "../lib/types";
 
 interface Props {
   orderedStops: Stop[]; // starts at the central point; does not return to it
+  onError?: (err: unknown) => void;
 }
 
 /** Draws a driving-route polyline through the stops in the exact order
  *  given (our TSP solver already decided the order; we just draw it).
  *  The Routes API has no drop-in renderer like the old DirectionsRenderer,
  *  so this fetches the route and draws the polyline(s) itself. */
-export function RouteDirections({ orderedStops }: Props) {
+export function RouteDirections({ orderedStops, onError }: Props) {
   const map = useMap();
   const routesLibrary = useMapsLibrary("routes");
   const polylinesRef = useRef<google.maps.Polyline[]>([]);
+  const onErrorRef = useRef(onError);
+
+  useEffect(() => {
+    onErrorRef.current = onError;
+  }, [onError]);
 
   function clearPolylines() {
     polylinesRef.current.forEach((polyline) => polyline.setMap(null));
@@ -52,7 +58,10 @@ export function RouteDirections({ orderedStops }: Props) {
         polylines.forEach((polyline) => polyline.setMap(map));
         polylinesRef.current = polylines;
       })
-      .catch((err) => console.error("computeRoutes failed:", err));
+      .catch((err) => {
+        console.error("computeRoutes failed:", err);
+        if (!cancelled) onErrorRef.current?.(err);
+      });
 
     return () => {
       cancelled = true;

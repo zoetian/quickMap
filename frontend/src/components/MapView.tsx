@@ -7,14 +7,26 @@ interface Props {
   centralPoint: Stop | null;
   stops: Stop[];
   route: RouteResult | null;
-  onMapClick: (lat: number, lng: number) => void;
+  onMapClick?: (lat: number, lng: number) => void;
+  /** Set false for a decorative, non-interactive background map (no
+   *  controls, no gestures, no click-to-add). Defaults to true. */
+  interactive?: boolean;
+  onRouteError?: (err: unknown) => void;
 }
 
 const DEFAULT_CENTER = { lat: 39.8283, lng: -98.5795 }; // roughly center of the US
 
-export function MapView({ mapId, centralPoint, stops, route, onMapClick }: Props) {
+export function MapView({
+  mapId,
+  centralPoint,
+  stops,
+  route,
+  onMapClick,
+  interactive = true,
+  onRouteError,
+}: Props) {
   function handleClick(e: MapMouseEvent) {
-    if (e.detail.latLng) {
+    if (onMapClick && e.detail.latLng) {
       onMapClick(e.detail.latLng.lat, e.detail.latLng.lng);
     }
   }
@@ -25,8 +37,10 @@ export function MapView({ mapId, centralPoint, stops, route, onMapClick }: Props
       mapId={mapId}
       defaultCenter={centralPoint ?? DEFAULT_CENTER}
       defaultZoom={centralPoint ? 12 : 4}
-      onClick={handleClick}
-      disableDefaultUI={false}
+      onClick={interactive ? handleClick : undefined}
+      disableDefaultUI={!interactive}
+      gestureHandling={interactive ? undefined : "none"}
+      keyboardShortcuts={interactive}
     >
       {centralPoint && (
         <AdvancedMarker position={centralPoint} title={centralPoint.label}>
@@ -57,7 +71,12 @@ export function MapView({ mapId, centralPoint, stops, route, onMapClick }: Props
           </AdvancedMarker>
         );
       })}
-      {route && <RouteDirections orderedStops={route.orderedStops} />}
+      {route && (
+        <RouteDirections
+          orderedStops={route.orderedStops}
+          onError={onRouteError}
+        />
+      )}
     </Map>
   );
 }

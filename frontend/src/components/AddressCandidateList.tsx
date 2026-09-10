@@ -5,12 +5,14 @@ interface Props {
   candidates: AddressCandidate[];
   onToggle: (id: string) => void;
   onAddManual: (text: string) => void;
+  onDelete: (id: string) => void;
 }
 
 export function AddressCandidateList({
   candidates,
   onToggle,
   onAddManual,
+  onDelete,
 }: Props) {
   const [manualText, setManualText] = useState("");
 
@@ -27,7 +29,8 @@ export function AddressCandidateList({
       <h3>Stops</h3>
       {candidates.length === 0 && (
         <p className="candidate-list__empty">
-          Scan a URL above, click the map, or add a stop manually below.
+          Add a stop below, click the map, or scan a page for addresses
+          further down.
         </p>
       )}
       <ul>
@@ -42,6 +45,15 @@ export function AddressCandidateList({
               <span className="candidate-list__letter">{c.letter}</span>
               {c.text}
             </label>
+            <button
+              type="button"
+              className="candidate-list__delete"
+              onClick={() => onDelete(c.id)}
+              aria-label={`Remove ${c.text}`}
+              title="Remove"
+            >
+              ×
+            </button>
           </li>
         ))}
       </ul>

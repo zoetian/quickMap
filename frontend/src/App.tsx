@@ -1,5 +1,12 @@
-import { useMemo, useRef, useState } from "react";
-import { APIProvider, useMapsLibrary } from "@vis.gl/react-google-maps";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  APILoadingStatus,
+  APIProvider,
+  useApiLoadingStatus,
+  useMapsLibrary,
+} from "@vis.gl/react-google-maps";
+import { ApiKeyPrompt } from "./components/ApiKeyPrompt";
+import { LandingHero } from "./components/LandingHero";
 import { UrlCrawlForm } from "./components/UrlCrawlForm";
 import { AddressCandidateList } from "./components/AddressCandidateList";
 import { CentralPointInput } from "./components/CentralPointInput";
@@ -11,29 +18,53 @@ import { geocodeAddress, reverseGeocode } from "./lib/geocoding";
 import { buildDistanceMatrix } from "./lib/distanceMatrix";
 import { solveTsp } from "./lib/tsp";
 import { CENTRAL_POINT_LETTER, stopLetterForIndex } from "./lib/labels";
+import {
+  clearStoredApiKey,
+  getStoredApiKey,
+  setStoredApiKey,
+} from "./lib/apiKeyStorage";
+import { isQuotaExceededError } from "./lib/quotaError";
 import type { AddressCandidate, RouteResult, Stop } from "./lib/types";
 import "./App.css";
-
-const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as
-  | string
-  | undefined;
 
 // AdvancedMarkerElement (replacing the deprecated google.maps.Marker)
 // requires a Map ID. "DEMO_MAP_ID" is Google's public placeholder for
 // local development — set VITE_GOOGLE_MAPS_MAP_ID to a real Map ID
 // (Cloud Console → Google Maps Platform → Map Management) before
-// deploying to production.
+// deploying to production. Unlike the API key, a Map ID isn't a secret
+// and doesn't drive billing on its own, so it's fine to bake into the build.
 const GOOGLE_MAPS_MAP_ID =
   (import.meta.env.VITE_GOOGLE_MAPS_MAP_ID as string | undefined) ??
   "DEMO_MAP_ID";
+
+// A shared, tightly-restricted key so visitors can try QuickMap before
+// bringing their own. It's restricted by HTTP referrer to this site and
+// has a daily request quota capped in Cloud Console per API — once that's
+// hit, Google itself starts rejecting calls, which we detect below and
+// use to prompt for the visitor's own key. Not a per-visitor limit, just
+// a shared bucket for the whole site each day.
+const GOOGLE_MAPS_DEMO_KEY = import.meta.env.VITE_GOOGLE_MAPS_DEMO_KEY as
+  | string
+  | undefined;
 
 function newId(): string {
   return crypto.randomUUID();
 }
 
-function QuickMapApp() {
+interface QuickMapAppProps {
+  usingOwnKey: boolean;
+  onClearApiKey: () => void;
+  onQuotaExceeded: () => void;
+}
+
+function QuickMapApp({
+  usingOwnKey,
+  onClearApiKey,
+  onQuotaExceeded,
+}: QuickMapAppProps) {
   const geocodingLibrary = useMapsLibrary("geocoding");
   const routesLibrary = useMapsLibrary("routes");
+  const apiLoadingStatus = useApiLoadingStatus();
 
   const geocoder = useMemo(
     () => (geocodingLibrary ? new geocodingLibrary.Geocoder() : null),
@@ -48,6 +79,28 @@ function QuickMapApp() {
   const [error, setError] = useState<string | null>(null);
   const [crawling, setCrawling] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  // If the shared demo key is misconfigured or has exhausted its Cloud
+  // Console quota badly enough that the map script itself fails to load,
+  // fall back to prompting for the visitor's own key the same way a
+  // per-call quota error does.
+  useEffect(() => {
+    if (
+      !usingOwnKey &&
+      (apiLoadingStatus === APILoadingStatus.FAILED ||
+        apiLoadingStatus === APILoadingStatus.AUTH_FAILURE)
+    ) {
+      onQuotaExceeded();
+    }
+  }, [apiLoadingStatus, usingOwnKey, onQuotaExceeded]);
+
+  function reportError(err: unknown) {
+    if (!usingOwnKey && isQuotaExceededError(err)) {
+      onQuotaExceeded();
+    } else {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
 
   const nextLetterIndexRef = useRef(0);
   function assignNextLetter(): string {
@@ -114,10 +167,16 @@ function QuickMapApp() {
       ]);
       setRoute(null);
     } catch (err) {
-      setError((err as Error).message);
+      reportError(err);
     } finally {
       setBusy(false);
     }
+  }
+
+  function handleDeleteCandidate(id: string) {
+    setCandidates((prev) => prev.filter((c) => c.id !== id));
+    setStops((prev) => prev.filter((s) => s.id !== id));
+    setRoute(null);
   }
 
   async function handleAddManual(text: string) {
@@ -144,7 +203,7 @@ function QuickMapApp() {
       ]);
       setRoute(null);
     } catch (err) {
-      setError((err as Error).message);
+      reportError(err);
     } finally {
       setBusy(false);
     }
@@ -165,7 +224,7 @@ function QuickMapApp() {
       setStops((prev) => [...prev, { id, label, lat, lng, letter }]);
       setRoute(null);
     } catch (err) {
-      setError((err as Error).message);
+      reportError(err);
     } finally {
       setBusy(false);
     }
@@ -189,7 +248,7 @@ function QuickMapApp() {
       });
       setRoute(null);
     } catch (err) {
-      setError((err as Error).message);
+      reportError(err);
     } finally {
       setBusy(false);
     }
@@ -217,7 +276,7 @@ function QuickMapApp() {
           });
           setRoute(null);
         } catch (err) {
-          setError((err as Error).message);
+          reportError(err);
         } finally {
           setBusy(false);
         }
@@ -268,22 +327,62 @@ function QuickMapApp() {
         legDistances,
       });
     } catch (err) {
-      setError((err as Error).message);
+      reportError(err);
     } finally {
       setBusy(false);
     }
   }
 
+  function handleChangeApiKey() {
+    if (
+      confirm(
+        "Clear your saved API key? You'll need to re-enter it, and your current stops/route will be lost."
+      )
+    ) {
+      onClearApiKey();
+    }
+  }
+
+  const changeKeyButton = (
+    <button
+      type="button"
+      className="change-key-button"
+      onClick={handleChangeApiKey}
+    >
+      {usingOwnKey ? "Change API key" : "Use your own API key"}
+    </button>
+  );
+
+  if (!route) {
+    return (
+      <>
+        {changeKeyButton}
+        <LandingHero
+          mapId={GOOGLE_MAPS_MAP_ID}
+          centralPoint={centralPoint}
+          candidates={candidates}
+          stops={stops}
+          busy={busy}
+          crawling={crawling}
+          error={error}
+          onCrawl={handleCrawl}
+          onSetCentralByAddress={handleSetCentralByAddress}
+          onUseCurrentLocation={handleUseCurrentLocation}
+          onToggleCandidate={handleToggleCandidate}
+          onDeleteCandidate={handleDeleteCandidate}
+          onAddManual={handleAddManual}
+          onOptimize={handleOptimize}
+        />
+      </>
+    );
+  }
+
   return (
     <div className="app">
-      <header className="app__header">
-        <h1>QuickMap</h1>
-        <p>Scan a page for addresses, then get the shortest route to visit them all.</p>
-      </header>
-
+      {changeKeyButton}
       <div className="app__body">
         <aside className="app__sidebar">
-          <UrlCrawlForm onSubmit={handleCrawl} loading={crawling} />
+          <div className="app__brand">QuickMap</div>
           <CentralPointInput
             centralPoint={centralPoint}
             onSetByAddress={handleSetCentralByAddress}
@@ -293,28 +392,31 @@ function QuickMapApp() {
           <AddressCandidateList
             candidates={candidates}
             onToggle={handleToggleCandidate}
+            onDelete={handleDeleteCandidate}
             onAddManual={handleAddManual}
           />
+          <div>
+            <h3>Or scan a page for addresses</h3>
+            <UrlCrawlForm onSubmit={handleCrawl} loading={crawling} />
+          </div>
           <button
             className="app__optimize"
             onClick={handleOptimize}
             disabled={busy || !centralPoint || stops.length === 0}
           >
-            {busy ? "Working…" : "Optimize route"}
+            {busy ? "Working…" : "Re-optimize route"}
           </button>
           {error && <p className="app__error">{error}</p>}
-          {route && <RouteOrderSummary route={route} />}
-          {route && (
-            <label className="app__debug-toggle">
-              <input
-                type="checkbox"
-                checked={showDebug}
-                onChange={(e) => setShowDebug(e.target.checked)}
-              />
-              Show debug table
-            </label>
-          )}
-          {route && showDebug && <DebugTable route={route} />}
+          <RouteOrderSummary route={route} />
+          <label className="app__debug-toggle">
+            <input
+              type="checkbox"
+              checked={showDebug}
+              onChange={(e) => setShowDebug(e.target.checked)}
+            />
+            Show debug table
+          </label>
+          {showDebug && <DebugTable route={route} />}
         </aside>
 
         <main className="app__map">
@@ -324,6 +426,7 @@ function QuickMapApp() {
             stops={stops}
             route={route}
             onMapClick={handleMapClick}
+            onRouteError={reportError}
           />
         </main>
       </div>
@@ -332,22 +435,42 @@ function QuickMapApp() {
 }
 
 export default function App() {
-  if (!GOOGLE_MAPS_API_KEY) {
+  const [ownApiKey, setOwnApiKey] = useState<string | null>(() =>
+    getStoredApiKey()
+  );
+  const [quotaExceeded, setQuotaExceeded] = useState(false);
+
+  function handleSubmitApiKey(key: string) {
+    setStoredApiKey(key);
+    setOwnApiKey(key);
+    setQuotaExceeded(false);
+  }
+
+  function handleClearApiKey() {
+    clearStoredApiKey();
+    setOwnApiKey(null);
+  }
+
+  const usingOwnKey = ownApiKey !== null;
+  const effectiveApiKey =
+    ownApiKey ?? (quotaExceeded ? null : GOOGLE_MAPS_DEMO_KEY ?? null);
+
+  if (!effectiveApiKey) {
     return (
-      <div className="app__config-error">
-        <h1>QuickMap</h1>
-        <p>
-          Missing <code>VITE_GOOGLE_MAPS_API_KEY</code>. Copy{" "}
-          <code>.env.example</code> to <code>.env.local</code> and fill in
-          your API key.
-        </p>
-      </div>
+      <ApiKeyPrompt
+        onSubmit={handleSubmitApiKey}
+        reason={quotaExceeded ? "quota" : "none"}
+      />
     );
   }
 
   return (
-    <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
-      <QuickMapApp />
+    <APIProvider apiKey={effectiveApiKey} key={effectiveApiKey}>
+      <QuickMapApp
+        usingOwnKey={usingOwnKey}
+        onClearApiKey={handleClearApiKey}
+        onQuotaExceeded={() => setQuotaExceeded(true)}
+      />
     </APIProvider>
   );
 }

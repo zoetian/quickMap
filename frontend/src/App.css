@@ -4,11 +4,12 @@
   --text: #1a1a2e;
   --text-muted: #6b6375;
   --border: #e3e2e8;
-  --header-bg: #8fc0e7;
   --accent: #5b7fdb;
   --accent-contrast: #ffffff;
   --danger: #c0392b;
   --danger-bg: #fdecea;
+  --scrim: rgba(255, 255, 255, 0.55);
+  --card-shadow: rgba(20, 20, 40, 0.25);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -18,11 +19,12 @@
     --text: #f0f0f3;
     --text-muted: #9ca3af;
     --border: #2e303a;
-    --header-bg: #2a4a6b;
     --accent: #7c9cf0;
     --accent-contrast: #0c0d12;
     --danger: #ff6b6b;
     --danger-bg: rgba(255, 107, 107, 0.12);
+    --scrim: rgba(10, 11, 15, 0.6);
+    --card-shadow: rgba(0, 0, 0, 0.5);
   }
 }
 
@@ -34,24 +36,26 @@
   color: var(--text);
 }
 
-.app__header {
-  padding: 18px 24px;
-  background: var(--header-bg);
-  color: #fff;
-  flex-shrink: 0;
-}
-
-.app__header h1 {
-  margin: 0 0 4px;
-  font-size: 24px;
+.app__brand {
+  font-size: 18px;
   font-weight: 800;
   letter-spacing: -0.4px;
+  color: var(--text);
 }
 
-.app__header p {
-  margin: 0;
-  font-size: 14px;
-  opacity: 0.9;
+.change-key-button {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 10;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px var(--card-shadow);
 }
 
 .app__body {
@@ -116,12 +120,6 @@
   cursor: pointer;
 }
 
-.app__config-error {
-  padding: 40px;
-  max-width: 480px;
-  margin: 0 auto;
-}
-
 h3 {
   margin: 0 0 8px;
   font-size: 13px;
@@ -181,12 +179,39 @@ button {
   gap: 4px;
 }
 
+.candidate-list__item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .candidate-list__item label {
   display: flex;
   align-items: flex-start;
   gap: 8px;
   font-size: 13px;
   cursor: pointer;
+  min-width: 0;
+}
+
+.candidate-list__delete {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.candidate-list__delete:hover {
+  color: var(--danger);
+  background: var(--danger-bg);
 }
 
 .candidate-list__letter {
@@ -312,6 +337,106 @@ button {
   font-weight: 600;
 }
 
+.landing {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-alt);
+}
+
+.landing--static {
+  background: linear-gradient(160deg, var(--bg-alt) 0%, var(--bg) 100%);
+}
+
+.landing__map-bg {
+  position: absolute;
+  inset: 0;
+  filter: blur(6px);
+  transform: scale(1.05); /* hide the blurred edge */
+  pointer-events: none;
+}
+
+.landing__scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--scrim);
+}
+
+.landing__content {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.hero-card {
+  width: 100%;
+  max-width: 440px;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 28px;
+  background: var(--bg);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px var(--card-shadow);
+}
+
+.hero-card__title {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.6px;
+  color: var(--text);
+  text-align: center;
+}
+
+.hero-card__subtitle {
+  margin: -10px 0 0;
+  font-size: 14px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.api-key-prompt {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.api-key-prompt label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.api-key-prompt button {
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.api-key-prompt__hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.api-key-prompt__hint a {
+  color: var(--accent);
+}
+
 @media (max-width: 720px) {
   .app__body {
     flex-direction: column;
@@ -322,5 +447,9 @@ button {
     max-height: 45vh;
     border-right: none;
     border-bottom: 1px solid var(--border);
+  }
+
+  .hero-card {
+    padding: 20px;
   }
 }
