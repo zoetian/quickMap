@@ -1,9 +1,27 @@
-# QuickMap
+<!--
+  TODO: add a logo/icon (e.g. docs/icon.svg or docs/icon.png), then
+  uncomment this:
+  <p align="center">
+    <img src="docs/icon.svg" width="96" height="96" alt="QuickMap icon" />
+  </p>
+-->
 
-<p align="center"><em>The optimal route from your central point through every stop.</em></p>
+<h1 align="center">QuickMap</h1>
 
 <p align="center">
-  <a href="https://zoetian.github.io/quickMap/"><strong>Try the live demo →</strong></a>
+  <strong>The optimal route from your central point through every stop.</strong>
+  <br />
+  Turn a list of addresses into the fastest way to visit them all.
+</p>
+
+<p align="center">
+  <a href="https://github.com/zoetian/quickMap/blob/master/LICENSE"><img src="https://img.shields.io/github/license/zoetian/quickMap?style=flat-square&color=5b7fdb" alt="License" /></a>
+  <a href="https://github.com/zoetian/quickMap/actions/workflows/deploy-frontend.yml"><img src="https://img.shields.io/github/actions/workflow/status/zoetian/quickMap/deploy-frontend.yml?style=flat-square&label=deploy" alt="Deploy status" /></a>
+  <a href="https://zoetian.me/quickMap/"><img src="https://img.shields.io/badge/demo-live-5b7fdb?style=flat-square" alt="Live demo" /></a>
+</p>
+
+<p align="center">
+  <a href="https://zoetian.me/quickMap/"><strong>Try the live demo →</strong></a>
 </p>
 
 <!--
@@ -20,13 +38,21 @@ off a webpage, drop pins on the map, or type them in by hand — QuickMap
 calculates real driving distances between every stop and finds the
 shortest path to cover them all.
 
+A few ways people use it:
+
+- **Real estate showings** — touring several listings or open houses in
+  one trip, in the smartest order, starting from wherever you are.
+- **Restaurant hopping ✨** — turn a "Top 10 Italian restaurants in Toronto" article into an actual route, and crawl through them without doubling back.
+- **Errand-running** — bank, pharmacy, post office, dry cleaner, grocery
+  store — knock them all out in the most efficient order from home.
+- **Delivery routes** — plan the shortest run across multiple drop-offs,
+  whether it's a side gig or a small business handling its own deliveries.
+
 No installation and no account required — open the live demo and plan a
 route in under a minute.
 
-<!--
-  TODO: add a couple of feature screenshots here, e.g.:
-  <p align="center"><img src="docs/screenshots/search.png" alt="Search screen" width="49%"><img src="docs/screenshots/route.png" alt="Route result" width="49%"></p>
--->
+<p align="center"><img src="docs/screenshots/search.gif?v=2" alt="Search screen"></p>
+
 
 ## Features
 
@@ -44,7 +70,7 @@ route in under a minute.
 
 ## Getting started
 
-1. Open [the live demo](https://zoetian.github.io/quickMap/) — no
+1. Open [the live demo](https://zoetian.me/quickMap/) — no
    signup needed.
 2. Set a **central point** — your starting location.
 3. Add **stops** by pasting a URL, clicking the map, or typing addresses
